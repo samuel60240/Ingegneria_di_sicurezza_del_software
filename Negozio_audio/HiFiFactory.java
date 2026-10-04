@@ -1,0 +1,3 @@
+ interface HiFiFactory{
+	Supporto creaSupporto();
+}

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<!-- saved from url=(0063)chrome-extension://fjagdfecjamoggjbfldencliejbcihei/editor.html -->
+<html class="puml-dark"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <title>PlantUML Editor</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted-fg: #656d76;
+      --panel-bg: #f6f8fa;
+      --border: #d0d7de;
+      --error-bg: #ffebe9;
+      --error-border: #ffcecb;
+      --error-fg: #cf222e;
+      --line-stripe: rgba(0, 0, 0, 0.035);
+      --tok-comment: #6a737d;
+      --tok-string: #032f62;
+      --tok-directive: #d73a49;
+      --tok-color: #005cc5;
+      --tok-arrow: #6f42c1;
+      --tok-keyword: #d73a49;
+      --tok-number: #005cc5;
+      --error-line-bg: rgba(207, 34, 46, 0.13);
+      --canvas-bg: #fafafa;
+    }
+    html.puml-dark {
+      --bg: #0d1117;
+      --fg: #f0f6fc;
+      --muted-fg: #8b949e;
+      --panel-bg: #161b22;
+      --border: #30363d;
+      --error-bg: #2d1214;
+      --error-border: #6e2c2c;
+      --error-fg: #ff7b72;
+      --line-stripe: rgba(255, 255, 255, 0.045);
+      --tok-comment: #8b949e;
+      --tok-string: #a5d6ff;
+      --tok-directive: #ff7b72;
+      --tok-color: #79c0ff;
+      --tok-arrow: #d2a8ff;
+      --tok-keyword: #ff7b72;
+      --tok-number: #79c0ff;
+      --error-line-bg: rgba(255, 123, 114, 0.18);
+      --canvas-bg: #090c10;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-bg);
+      flex: 0 0 auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      display: block;
+    }
+
+    header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--fg);
+      font: 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      cursor: pointer;
+    }
+    button:hover { background: var(--border); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button:disabled:hover { background: transparent; }
+
+    button.btn-sm {
+      height: 20px;
+      padding: 0 8px;
+      font-size: 11px;
+    }
+
+    button.icon-btn {
+      height: 34px;
+      width: 34px;
+      padding: 0;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      font-size: 15px;
+      line-height: 1;
+    }
+    button.icon-btn:hover { background: var(--border); }
+
+    main {
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+    }
+
+    .pane {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pane.source-pane {
+      flex: 0 0 50%;
+    }
+
+    .pane.diagram-pane {
+      flex: 1 1 0%;
+      border-left: 1px solid var(--border);
+    }
+
+    .resizer {
+      flex: 0 0 6px;
+      cursor: col-resize;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+    .resizer:hover,
+    .resizer.dragging {
+      background: var(--border);
+    }
+
+    .pane-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted-fg);
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-bg);
+      flex: 0 0 auto;
+    }
+
+    .source-buttons,
+    .diagram-buttons {
+      display: flex;
+      gap: 4px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .editor-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    #error-line-layer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    #error-line-marker {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 19.5px;
+      background: var(--error-line-bg);
+      display: none;
+    }
+
+    #line-numbers {
+      flex: 0 0 auto;
+      overflow: hidden;
+      padding: 12px 8px 12px 12px;
+      text-align: right;
+      white-space: pre;
+      user-select: none;
+      color: var(--muted-fg);
+      background-color: var(--panel-bg);
+      border-right: 1px solid var(--border);
+      font: 13px/1.5 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    #line-numbers-content {
+      display: block;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--line-stripe) 0,
+        var(--line-stripe) 19.5px,
+        transparent 19.5px,
+        transparent 39px
+      );
+    }
+
+    .code-surface {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    #highlight-layer,
+    #source {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      padding: 12px;
+      border: none;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      tab-size: 4;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+
+    #highlight-layer {
+      overflow: hidden;
+      pointer-events: none;
+      color: var(--fg);
+      background-color: var(--bg);
+    }
+
+    #highlight-code {
+      display: block;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--line-stripe) 0,
+        var(--line-stripe) 19.5px,
+        transparent 19.5px,
+        transparent 39px
+      );
+    }
+
+    .tok-comment { color: var(--tok-comment); font-style: italic; }
+    .tok-string { color: var(--tok-string); }
+    .tok-directive { color: var(--tok-directive); font-weight: 600; }
+    .tok-color { color: var(--tok-color); }
+    .tok-arrow { color: var(--tok-arrow); }
+    .tok-keyword { color: var(--tok-keyword); font-weight: 600; }
+    .tok-number { color: var(--tok-number); }
+
+    #source {
+      width: 100%;
+      height: 100%;
+      resize: none;
+      outline: none;
+      overflow-y: auto;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--fg);
+    }
+    #source::-webkit-scrollbar {
+      display: none;
+    }
+
+    .zoom-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-bg);
+      flex: 0 0 auto;
+    }
+
+    #zoom-reset {
+      min-width: 44px;
+    }
+
+    .zoom-toolbar button[aria-pressed="true"] {
+      background: var(--border);
+    }
+
+    #zoom-level {
+      margin-left: 4px;
+      font-size: 11px;
+      color: var(--muted-fg);
+      min-width: 36px;
+    }
+
+    .output-scroll {
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 12px;
+      background: var(--canvas-bg);
+    }
+
+    #plantuml-output {
+      min-width: 100%;
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    #plantuml-output svg {
+      display: block;
+    }
+
+    .puml-error {
+      color: var(--error-fg);
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    .puml-loading {
+      color: var(--muted-fg);
+      font-style: italic;
+    }
+
+    /* --- Rate us footer --- */
+    .rate-footer {
+      flex: 0 0 auto;
+      padding: 6px 16px 8px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      background: var(--panel-bg);
+    }
+
+    .rate-footer .rate-title {
+      margin: 0 0 2px;
+      font-size: 12px;
+      color: var(--muted-fg);
+    }
+
+    .full-stars .rating-group {
+      display: inline-flex;
+    }
+    .full-stars input {
+      position: absolute;
+      left: -9999px;
+    }
+    .full-stars label {
+      margin: 0;
+      cursor: pointer;
+    }
+    .full-stars label a {
+      display: block;
+      line-height: 0;
+    }
+    .full-stars label a svg {
+      margin: 2px;
+      height: 24px;
+      width: 24px;
+      fill: #ff8400;
+      transition: fill 0.3s;
+    }
+    .full-stars input:checked ~ label a svg {
+      fill: #ffc711;
+    }
+    .full-stars .rating-group:hover label a svg {
+      fill: #ff8400;
+    }
+    .full-stars .rating-group input:hover ~ label a svg {
+      fill: #ffc711;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="chrome-extension://fjagdfecjamoggjbfldencliejbcihei/icons/128.png" alt="" class="app-icon">
+      <h1>PlantUML Editor</h1>
+    </div>
+    <div class="toolbar">
+      <button id="theme-toggle" class="icon-btn" type="button" title="Toggle dark theme" aria-label="Toggle dark theme" aria-pressed="true">☀️</button>
+    </div>
+  </header>
+  <main>
+    <div class="pane source-pane">
+      <div class="pane-label">
+        <span>Source</span>
+        <div class="source-buttons">
+          <button id="copy-source" class="btn-sm" type="button" title="Copy source code">Copy</button>
+          <button id="paste-source" class="btn-sm" type="button" title="Paste into source code">Paste</button>
+          <button id="save-source" class="btn-sm" type="button" title="Save source to a text file">Save</button>
+        </div>
+      </div>
+      <div class="editor-wrap">
+        <div id="line-numbers"><div id="line-numbers-content">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76</div></div>
+        <div class="code-surface">
+          <pre id="highlight-layer" aria-hidden="true"><code id="highlight-code"><span class="tok-directive">@startuml</span>
+allowmixing 
+
+<span class="tok-keyword">skinparam</span> classAttributeIconSize <span class="tok-number">0</span>
+
+<span class="tok-comment">' --- PRODOTTO E AZIONI ---</span>
+<span class="tok-keyword">interface</span> Supporto <span class="tok-arrow">&lt;&lt;</span><span class="tok-keyword">Interface</span><span class="tok-arrow">&gt;&gt;</span> {
+    + $riproduzione():String
+    + $registrazione(String):void
+
+    + getTipo() : String
+}
+
+<span class="tok-keyword">class</span> Tape <span class="tok-keyword">implements</span> Supporto {
+    - contenuto : String
+    + scriviTraccia(traccia : String) : void
+    + leggiTraccia() : String
+    + getTipo() : String
+}
+
+<span class="tok-keyword">class</span> CD <span class="tok-keyword">implements</span> Supporto {
+    - contenuto : String
+    + scriviTraccia(traccia : String) : void
+    + leggiTraccia() : String
+    + getTipo() : String
+}
+
+<span class="tok-comment">' --- FACTORY METHOD ---</span>
+<span class="tok-keyword">interface</span> HiFiFactory <span class="tok-arrow">&lt;&lt;</span><span class="tok-keyword">Interface</span><span class="tok-arrow">&gt;&gt;</span> {
+    + creaSupporto() : Supporto
+    + masterizzatore(s : Supporto, traccia : String) : void
+    + riproduttore(s : Supporto) : void
+}
+
+<span class="tok-keyword">class</span> TapeFactory <span class="tok-keyword">implements</span> HiFiFactory {
+
+    + creaSupporto() : Tape
+
+}
+
+<span class="tok-keyword">class</span> CDFactory <span class="tok-keyword">implements</span> HiFiFactory {
+    + creaSupporto() : CD
+
+}
+
+<span class="tok-keyword">class</span> CDProva<span class="tok-arrow">&lt;&lt;</span>singleton<span class="tok-arrow">&gt;&gt;</span> <span class="tok-keyword">implements</span> Supporto{
+    - istanza : CDProva
+    -CDProva()
+    -getIstanza():CDProva
+}
+
+<span class="tok-keyword">class</span> TapeProva<span class="tok-arrow">&lt;&lt;</span>singleton<span class="tok-arrow">&gt;&gt;</span> <span class="tok-keyword">implements</span> Supporto{
+    - istanza:TapeProva
+    - TapeProva()
+    + getIstanza():TapeProva
+    
+
+}
+
+
+<span class="tok-comment">' --- SINGLETON (BANCO PROVA) ---</span>
+<span class="tok-keyword">actor</span> Cliente 
+
+<span class="tok-comment">' --- RELAZIONI ---</span>
+TapeFactory <span class="tok-arrow">..&gt;</span> Tape : <span class="tok-arrow">&lt;&lt;</span><span class="tok-keyword">create</span><span class="tok-arrow">&gt;&gt;</span>
+CDFactory <span class="tok-arrow">..&gt;</span> CD : <span class="tok-arrow">&lt;&lt;</span><span class="tok-keyword">create</span><span class="tok-arrow">&gt;&gt;</span>
+
+Cliente <span class="tok-arrow">..&gt;&gt;</span> HiFiFactory : compra
+
+Cliente <span class="tok-arrow">.&gt;</span> CDProva : prova
+Cliente <span class="tok-arrow">.&gt;</span> TapeProva :prova
+
+
+
+
+<span class="tok-directive">@enduml</span></code></pre>
+          <textarea id="source" spellcheck="false" autocapitalize="none" autocorrect="off"></textarea>
+        </div>
+        <div id="error-line-layer" aria-hidden="true"><div id="error-line-marker" style="display: none; top: 1377px;"></div></div>
+      </div>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="pane diagram-pane">
+      <div class="pane-label">
+        <span>Diagram</span>
+        <div class="diagram-buttons">
+          <button id="copy-svg" class="btn-sm" type="button">Copy as SVG</button>
+          <button id="copy-png" class="btn-sm" type="button">Copy as PNG</button>
+          <button id="save-svg" class="btn-sm" type="button">Save SVG</button>
+          <button id="save-png" class="btn-sm" type="button">Save PNG</button>
+        </div>
+      </div>
+      <div class="zoom-toolbar">
+        <button id="zoom-fit" class="btn-sm" type="button" title="Fit to width" aria-pressed="false">Fit</button>
+        <button id="zoom-out" class="btn-sm" type="button" title="Zoom out">−</button>
+        <button id="zoom-reset" class="btn-sm" type="button" title="Reset to 100%">100%</button>
+        <button id="zoom-in" class="btn-sm" type="button" title="Zoom in">+</button>
+        <span id="zoom-level" aria-hidden="true">106%</span>
+      </div>
+      <div class="output-scroll">
+        <div id="plantuml-output"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 719 808" width="719" height="808" style="width: 762.14px; height: 856.48px;"><defs></defs><g><g class="entity" data-qualified-name="Supporto" id="ent0002" data-source-line="6"><rect x="345" y="7" width="183.58" height="119.33" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="404.13" cy="26.67" r="11" fill="#352866" stroke="#E7E7E7" stroke-width="1"></circle><text x="404.13" y="26.67" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">I</text><text x="423.02" y="22.33" font-size="12" fill="#000000" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">«Interface»</text><text x="424.63" y="38.33" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">Supporto</text><line x1="346" y1="46.33" x2="527.58" y2="46.33" stroke="#E7E7E7" stroke-width="0.50"></line><line x1="346" y1="54.33" x2="527.58" y2="54.33" stroke="#E7E7E7" stroke-width="0.50"></line><text x="351" y="71.33" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+$riproduzione():String</text><text x="351" y="87.33" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+$registrazione(String):void</text><text x="351" y="103.33" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif"> </text><text x="351" y="119.33" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+getTipo() : String</text></g><g class="entity" data-qualified-name="Tape" id="ent0003" data-source-line="13"><rect x="7" y="686.25" width="233.59" height="112" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="104.36" cy="702.25" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="104.36" y="702.25" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="124.86" y="707.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">Tape</text><line x1="8" y1="718.25" x2="239.59" y2="718.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="13" y="735.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-contenuto : String</text><line x1="8" y1="742.25" x2="239.59" y2="742.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="13" y="759.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+scriviTraccia(traccia : String) : void</text><text x="13" y="775.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+leggiTraccia() : String</text><text x="13" y="791.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+getTipo() : String</text></g><g class="entity" data-qualified-name="CD" id="ent0005" data-source-line="20"><rect x="476" y="686.25" width="233.59" height="112" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="578.43" cy="702.25" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="578.43" y="702.25" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="598.93" y="707.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">CD</text><line x1="477" y1="718.25" x2="708.59" y2="718.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="482" y="735.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-contenuto : String</text><line x1="477" y1="742.25" x2="708.59" y2="742.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="482" y="759.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+scriviTraccia(traccia : String) : void</text><text x="482" y="775.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+leggiTraccia() : String</text><text x="482" y="791.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+getTipo() : String</text></g><g class="entity" data-qualified-name="HiFiFactory" id="ent0007" data-source-line="28"><rect x="140.09" y="381.92" width="331.40" height="103.33" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="265.76" cy="401.59" r="11" fill="#352866" stroke="#E7E7E7" stroke-width="1"></circle><text x="265.76" y="401.59" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">I</text><text x="292.02" y="397.25" font-size="12" fill="#000000" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">«Interface»</text><text x="286.26" y="413.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">HiFiFactory</text><line x1="141.09" y1="421.25" x2="470.49" y2="421.25" stroke="#E7E7E7" stroke-width="0.50"></line><line x1="141.09" y1="429.25" x2="470.49" y2="429.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="146.09" y="446.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+creaSupporto() : Supporto</text><text x="146.09" y="462.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+masterizzatore(s : Supporto, traccia : String) : void</text><text x="146.09" y="478.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+riproduttore(s : Supporto) : void</text></g><g class="entity" data-qualified-name="TapeFactory" id="ent0008" data-source-line="34"><rect x="165" y="546.25" width="155.58" height="64" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="200.95" cy="562.25" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="200.95" y="562.25" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="219.60" y="567.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">TapeFactory</text><line x1="166" y1="578.25" x2="319.58" y2="578.25" stroke="#E7E7E7" stroke-width="0.50"></line><line x1="166" y1="586.25" x2="319.58" y2="586.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="171" y="603.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+creaSupporto() : Tape</text></g><g class="entity" data-qualified-name="CDFactory" id="ent0010" data-source-line="40"><rect x="406.07" y="546.25" width="145.44" height="64" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="442.02" cy="562.25" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="442.02" y="562.25" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="460.67" y="567.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">CDFactory</text><line x1="407.07" y1="578.25" x2="550.51" y2="578.25" stroke="#E7E7E7" stroke-width="0.50"></line><line x1="407.07" y1="586.25" x2="550.51" y2="586.25" stroke="#E7E7E7" stroke-width="0.50"></line><text x="412.07" y="603.25" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+creaSupporto() : CD</text></g><g class="entity" data-qualified-name="CDProva" id="ent0012" data-source-line="45"><rect x="252.16" y="203.33" width="151.27" height="102.58" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="295.01" cy="223.00" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="295.01" y="223.00" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="313.20" y="218.66" font-size="12" fill="#000000" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">«singleton»</text><text x="315.49" y="234.66" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">CDProva</text><line x1="253.16" y1="242.66" x2="402.43" y2="242.66" stroke="#E7E7E7" stroke-width="0.50"></line><text x="258.16" y="259.41" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-istanza : CDProva</text><line x1="253.16" y1="266.41" x2="402.43" y2="266.41" stroke="#E7E7E7" stroke-width="0.50"></line><text x="258.16" y="283.16" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-CDProva()</text><text x="258.16" y="298.91" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-getIstanza():CDProva</text></g><g class="entity" data-qualified-name="TapeProva" id="ent0014" data-source-line="51"><rect x="438.33" y="203.33" width="164.92" height="102.58" rx="2.50" ry="2.50" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></rect><circle cx="483.07" cy="223.00" r="11" fill="#2E5233" stroke="#E7E7E7" stroke-width="1"></circle><text x="483.07" y="223.00" font-family="monospace" font-size="17" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">C</text><text x="506.35" y="218.66" font-size="12" fill="#000000" xml:space="preserve" style="white-space: pre" font-style="italic" font-family="sans-serif">«singleton»</text><text x="503.57" y="234.66" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">TapeProva</text><line x1="439.33" y1="242.66" x2="602.25" y2="242.66" stroke="#E7E7E7" stroke-width="0.50"></line><text x="444.33" y="259.41" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-istanza:TapeProva</text><line x1="439.33" y1="266.41" x2="602.25" y2="266.41" stroke="#E7E7E7" stroke-width="0.50"></line><text x="444.33" y="283.16" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">-TapeProva()</text><text x="444.33" y="298.91" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">+getIstanza():TapeProva</text></g><g class="entity" data-qualified-name="Cliente" id="ent0016" data-source-line="61"><circle cx="161.79" cy="225.12" r="8" fill="#313139" stroke="#E7E7E7" stroke-width="0.50"></circle><path d="M161.79,233.12 L161.79,260.12 M148.79,241.12 L174.79,241.12 M161.79,260.12 L148.79,275.12 M161.79,260.12 L174.79,275.12" fill="#00000000" stroke="#E7E7E7" stroke-width="0.50"></path><text x="140" y="289.62" font-size="14" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">Cliente</text></g><g class="link" data-entity-1="ent0002" data-entity-2="ent0003" id="lnk4" data-source-line="14" data-link-type="extension"><path d="M327.0534,79.6832 C223.3534,95.7932 86.79,136.65 86.79,253.62 C86.79,253.62 86.79,253.62 86.79,579.25 C86.79,615.46 95.69,655.1 104.75,686.1" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="344.84,76.92 326.13,73.75 327.97,85.61 344.84,76.92" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0002" data-entity-2="ent0005" id="lnk6" data-source-line="21" data-link-type="extension"><path d="M545.1168,111.7056 C604.9768,141.7556 655.79,183.05 655.79,253.62 C655.79,253.62 655.79,253.62 655.79,579.25 C655.79,616.52 641.13,655.53 625.95,685.93" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="529.03,103.63 542.42,117.07 547.81,106.34 529.03,103.63" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0007" data-entity-2="ent0008" id="lnk9" data-source-line="35" data-link-type="extension"><path d="M275.9544,502.1541 C267.0544,522.2941 264.4,528.33 256.6,545.98" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="283.23,485.69 270.47,499.73 281.44,504.58 283.23,485.69" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0007" data-entity-2="ent0010" id="lnk11" data-source-line="41" data-link-type="extension"><path d="M381.6505,497.1379 C405.9905,517.1979 419.26,528.15 440.62,545.77" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="367.76,485.69 377.83,501.77 385.47,492.51 367.76,485.69" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0002" data-entity-2="ent0012" id="lnk13" data-source-line="46" data-link-type="extension"><path d="M378.8778,141.0501 C371.9178,150.7801 375.62,146.33 369.79,156.33 C361.28,170.96 353.46,187.64 346.93,203.01" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="389.35,126.41 374.00,137.56 383.76,144.54 389.35,126.41" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0002" data-entity-2="ent0014" id="lnk15" data-source-line="52" data-link-type="extension"><path d="M470.8952,143.1662 C481.9852,167.7362 487.33,179.55 497.98,203.13" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="463.49,126.76 465.43,145.63 476.36,140.70 463.49,126.76" fill="#00000000" stroke="#E7E7E7" stroke-width="1"></polygon></g><g class="link" data-entity-1="ent0008" data-entity-2="ent0003" id="lnk17" data-source-line="64" data-link-type="dependency"><path d="M219.85,610.49 C204.18,631.82 186.5413,655.8238 168.0513,681.0038" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="164.50,685.84 173.05,680.95 167.46,681.81 166.60,676.22 164.50,685.84" fill="#E7E7E7" stroke="#E7E7E7" stroke-width="1"></polygon><text x="198.45" y="652.92" font-size="13" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">«create»</text></g><g class="link" data-entity-1="ent0010" data-entity-2="ent0005" id="lnk18" data-source-line="65" data-link-type="dependency"><path d="M500.77,610.49 C515.78,631.82 532.6382,655.7523 550.3482,680.9323" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="553.80,685.84 551.89,676.18 550.92,681.75 545.35,680.78 553.80,685.84" fill="#E7E7E7" stroke="#E7E7E7" stroke-width="1"></polygon><text x="533.38" y="652.92" font-size="13" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">«create»</text></g><g class="link" data-entity-1="ent0016" data-entity-2="ent0007" id="lnk19" data-source-line="67" data-link-type="dependency"><path d="M183.98,282.89 C205.36,309.16 233.1807,343.3548 259.3907,375.5648" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="264.44,381.77 261.72,373.67 257.06,377.46 264.44,381.77" fill="#E7E7E7" stroke="#E7E7E7" stroke-width="1"></polygon><text x="239.11" y="348.59" font-size="13" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">compra</text></g><g class="link" data-entity-1="ent0016" data-entity-2="ent0012" id="lnk20" data-source-line="69" data-link-type="dependency"><path d="M183.84,254.62 C201.39,254.62 221.04,254.62 245.85,254.62" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="251.85,254.62 242.85,250.62 246.85,254.62 242.85,258.62 251.85,254.62" fill="#E7E7E7" stroke="#E7E7E7" stroke-width="1"></polygon><text x="201.87" y="247.62" font-size="13" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">prova</text></g><g class="link" data-entity-1="ent0016" data-entity-2="ent0014" id="lnk21" data-source-line="70" data-link-type="dependency"><path d="M184.05,235.5 C197.84,224.58 216.38,211.48 234.79,203.33 C307.91,171 336.07,145.67 411.79,171.3 C431.76,178.06 446.2125,186.4181 462.7725,199.2881" fill="none" stroke="#E7E7E7" stroke-width="1" stroke-dasharray="7,7"></path><polygon points="467.51,202.97 462.86,194.29 463.56,199.90 457.95,200.61 467.51,202.97" fill="#E7E7E7" stroke="#E7E7E7" stroke-width="1"></polygon><text x="378.79" y="169.33" font-size="13" fill="#FFFFFF" xml:space="preserve" style="white-space: pre" font-family="sans-serif">prova</text></g></g></svg></div>
+      </div>
+    </div>
+  </main>
+  <!-- Rate us: stars 1-3 open a feedback form, 4-5 the Chrome Web Store review page. -->
+  <footer class="rate-footer">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="star-icon" viewBox="0 0 576 512">
+        <path d="M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0z"></path>
+      </symbol>
+    </svg>
+    <p class="rate-title">Rate us:</p>
+    <div class="full-stars">
+      <div class="rating-group">
+        <input name="fst" value="5" type="radio" disabled="" checked="">
+        <label for="fst-1">
+          <a data-rate-url="https://docs.google.com/forms/d/e/1FAIpQLSdeb5zSt_91AYwvlysT6fssHiQVLvl2CemHgJpkQtMOrYeYzQ/viewform" role="link" tabindex="0" title="1 star" aria-label="Rate 1 star"><svg><use href="#star-icon"></use></svg></a>
+        </label>
+        <input name="fst" id="fst-1" value="1" type="radio">
+        <label for="fst-2">
+          <a data-rate-url="https://docs.google.com/forms/d/e/1FAIpQLSdeb5zSt_91AYwvlysT6fssHiQVLvl2CemHgJpkQtMOrYeYzQ/viewform" role="link" tabindex="0" title="2 stars" aria-label="Rate 2 stars"><svg><use href="#star-icon"></use></svg></a>
+        </label>
+        <input name="fst" id="fst-2" value="2" type="radio">
+        <label for="fst-3">
+          <a data-rate-url="https://docs.google.com/forms/d/e/1FAIpQLSdeb5zSt_91AYwvlysT6fssHiQVLvl2CemHgJpkQtMOrYeYzQ/viewform" role="link" tabindex="0" title="3 stars" aria-label="Rate 3 stars"><svg><use href="#star-icon"></use></svg></a>
+        </label>
+        <input name="fst" id="fst-3" value="3" type="radio">
+        <label for="fst-4">
+          <a data-rate-url="https://chromewebstore.google.com/detail/plantuml-editor/fjagdfecjamoggjbfldencliejbcihei/reviews" role="link" tabindex="0" title="4 stars" aria-label="Rate 4 stars"><svg><use href="#star-icon"></use></svg></a>
+        </label>
+        <input name="fst" id="fst-4" value="4" type="radio">
+        <label for="fst-5">
+          <a data-rate-url="https://chromewebstore.google.com/detail/plantuml-editor/fjagdfecjamoggjbfldencliejbcihei/reviews" role="link" tabindex="0" title="5 stars" aria-label="Rate 5 stars"><svg><use href="#star-icon"></use></svg></a>
+        </label>
+        <input name="fst" id="fst-5" value="5" type="radio">
+      </div>
+    </div>
+  </footer>
+  <!-- viz-global.js must be loaded as a classic script (it sets globals). -->
+  <script src="chrome-extension://fjagdfecjamoggjbfldencliejbcihei/vendor/viz-global.js"></script>
+  <!-- editor.js is loaded as a module so it can import plantuml.js. -->
+  <script type="module" src="chrome-extension://fjagdfecjamoggjbfldencliejbcihei/editor.js"></script>
+
+
+</body></html>

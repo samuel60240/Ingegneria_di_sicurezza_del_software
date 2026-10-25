@@ -1,0 +1,104 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Gestione Progetto e Governance" {
+    class DirettoreScientifico {
+        - nome: String
+        + approvaBudgetStraordinario(importo: double, wp: ResponsabileWP): boolean
+    }
+
+    class Progetto {
+        - titolo: String
+        - direttore: DirettoreScientifico
+        - workPackages: List<WorkPackage>
+        + aggiungiWP(wp: WorkPackage): void
+    }
+
+    class WorkPackage {
+        - idWP: String
+        - titolo: String
+        - responsabile: ResponsabileWP
+        - membri: List<MembroWP>
+        - taskList: List<TaskItem>
+        + addTask(task: TaskItem): void
+        + assegnaCompitoSpeciale(membro: MembroWP, comando: ICommand): void
+    }
+
+    class MembroWP {
+        - idMembro: String
+        - nome: String
+        + eseguiCompito(): void
+    }
+
+    class ResponsabileWP {
+        - budgetCorrente: double
+        + richiediBudgetStraordinario(importo: double, direttore: DirettoreScientifico): boolean
+    }
+}
+
+package "Composite Pattern (Task & Sotto-Task)" {
+    interface TaskItem {
+        + esegui(): void
+        + salvaRisultati(): void
+    }
+
+    class SimpleTask {
+        - descrizione: String
+        - risultato: Object
+        + esegui(): void
+        + salvaRisultati(): void
+    }
+
+    class CompositeTask {
+        - sottoTask: List<TaskItem>
+        - risultatoGlobale: Object
+        + esegui(): void
+        + salvaRisultati(): void
+        + add(task: TaskItem): void
+        + remove(task: TaskItem): void
+    }
+}
+
+package "Command Pattern (Compiti Speciali)" {
+    interface ICommand {
+        + execute(): void
+    }
+
+    class SpecialTaskCommand {
+        - destinatario: MembroWP
+        - dettagliCompito: String
+        + execute(): void
+    }
+}
+
+package "Singleton Pattern (Database Centralizzato)" {
+    class CentralizedDB {
+        - {static} instance: CentralizedDB
+        - CentralizedDB()
+        + {static} getInstance(): CentralizedDB
+        + salvaRisultato(taskId: String, dati: Object): void
+    }
+}
+
+Progetto "1" *-- "1" DirettoreScientifico : supervisiona >
+Progetto "1" *-- "*" WorkPackage : contiene >
+WorkPackage "1" o-- "1" ResponsabileWP : gestito da >
+WorkPackage "1" *-- "*" MembroWP : include >
+WorkPackage "1" *-- "*" TaskItem : possiede >
+
+ResponsabileWP --|> MembroWP : eredita/ruolo
+ResponsabileWP ..> DirettoreScientifico : invia richiesta budget >
+
+TaskItem <|.. SimpleTask
+TaskItem <|.. CompositeTask
+CompositeTask o-- "*" TaskItem : raggruppa >
+
+SpecialTaskCommand ..|> ICommand
+ResponsabileWP ..> ICommand : assegna >
+SpecialTaskCommand --> MembroWP : esegue su >
+
+SimpleTask ..> CentralizedDB : usa istanza >
+CompositeTask ..> CentralizedDB : usa istanza >
+
+@enduml

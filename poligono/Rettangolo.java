@@ -1,16 +1,23 @@
-Public class Rettangolo implements Poligono{
-	
-	private int base;
-	private int altezza;
+public class Rettangolo implements Poligono {
+    private double base;
+    private double altezza;
 
-	public Rettangolo(int base, int altezza){
-		this.base = base;
-		this.altezza = altezza;
-	}
+    public Rettangolo() {
+        this(1, 1);
+    }
 
-	public int getArea(){
-		return base*altezza;	
-	}
+    public Rettangolo(double base, double altezza) {
+        this.base = base;
+        this.altezza = altezza;
+    }
 
+    @Override
+    public double getArea() {
+        return base * altezza;
+    }
 
+    @Override
+    public Poligono clone() {
+        return new Rettangolo(this.base, this.altezza);
+    }
 }

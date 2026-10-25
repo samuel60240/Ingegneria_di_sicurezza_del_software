@@ -1,0 +1,49 @@
+@startuml
+
+interface Builder{
++getTelaio():
++getMotore():
++getImpiantoDiScarico():
++getImpiantoFrentante():
++getArredamentoInterno()
++getSedili():
++getVolante()
++getParafanghi():
++getSportelli()
++getCofano():
++getRuote()
++getBagagliagio():
++getParabrezza():
++getFinestrini():
+}
+interface Utilitarie{
+
+}
+class FiatPanda implements Utilitarie{
+}
+interface Sportive{
+}
+
+class FerrariPortofino implements Sportive{
+}
+
+class Director{
++build():Builder
+}
+
+
+
+class ConcreteBuilder implements Builder{
+
+}
+
+allowmixing
+actor Cliente
+
+Cliente ..> Builder
+Cliente --> Director
+
+ConcreteBuilder ..> FiatPanda
+ConcreteBuilder ..> FerrariPortofino
+Director-> Builder
+@enduml

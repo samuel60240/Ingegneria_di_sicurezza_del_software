@@ -1,0 +1,69 @@
+@startuml
+
+Interface Posatine{}
+Interface Cards{}
+Interface Peluche{}
+
+interface StaticToysInterface <<interface>> implements ToysInterface{}
+interface LegoStoreInterface <<interface>>{
+<<unknown>>
+}
+interface ToysInterface <<interface>> { 
+createItem
+}
+interface MecaToysInterface <<interface>> implements ToysInterface{
+ copyItem//non implementabile con Lego
+ adGagets// non implementabile con Lego
+}
+interface SneakIntemCostructorInterface <<interface>>{
+  makePosatine
+  makePorta-merenda
+  makeTovaglietta
+  makeBorraccia
+}
+interface ElectricToysInterface <<interface>> implements ToysInterface{
+copyItem
+chargeItem
+turnOn
+}
+
+class LegoStoreUnic <<singleton>> implements LegoStoreInterface{
+  createItem
+  replicateItem
+}
+
+class concretePeluche implements Peluche{}
+class concreteCards implements Cards{}
+
+class CostructorLegoToys implements MecaToysInterface{}
+class costructorStaticToys implements StaticToysInterface {}
+
+class NinjaPosatine implements Posatine{}
+class FrozenPosatine implements Posatine{}
+class AvengerPosatine implements Posatine{}
+class NinjaPorta-merenda implements Porta-merenda{}
+class FrozenPorta-merenda implements Porta-merenda{}
+class AvengerPorta-merenda implements Porta-merenda{}
+
+class NinjaSneakItemCostructor implements SneakIntemCostructorInterface{}
+class FrozenSneakItemCostructor implements SneakIntemCostructorInterface{}
+class AvengerSneakeItemCostructor implements SneakIntemCostructorInterface{}
+
+
+
+
+costructorStaticToys ->concretePeluche
+costructorStaticToys ->concreteCards
+
+NinjaSneakItemCostructor --> NinjaPosatine
+NinjaSneakItemCostructor --> NinjaPorta-merenda
+
+FrozenSneakItemCostructor -> FrozenPosatine
+FrozenSneakItemCostructor ---> FrozenPorta-merenda
+
+AvengerSneakeItemCostructor --> AvengerPosatine
+AvengerSneakeItemCostructor --> AvengerPorta-merenda
+
+CostructorLegoToys o- LegoStoreUnic
+
+@enduml

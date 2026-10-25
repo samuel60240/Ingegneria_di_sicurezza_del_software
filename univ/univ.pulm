@@ -1,0 +1,42 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+interface Studente {
+  + seguiInsegnamento(i: Insegnamento)
+  + sostieniEsame(e: Esame)
+}
+
+class StudenteSemplice implements Studente {
+  + seguiInsegnamento(i: Insegnamento)
+  + sostieniEsame(e: Esame)
+}
+
+abstract class StudenteDecorator  {
+  # studenteWrappato: Studente
+  + StudenteDecorator(s: Studente)
+  + seguiInsegnamento(i: Insegnamento)
+  + sostieniEsame(e: Esame)
+}
+
+class StudenteTutor extends StudenteDecorator {
+  + StudenteTutor(s: Studente)
+  + faiRicevimento()
+  + faiEsercitazioni()
+}
+
+class StudenteDimostratore extends StudenteDecorator {
+  - eventi: List<Evento>
+  + StudenteDimostratore(s: Studente)
+  + aggiungiEvento(e: Evento)
+  + creaIteratore(): Iterator<Evento>
+}
+
+class StudenteLaureando extends StudenteDecorator {
+  + StudenteLaureando(s: Studente)
+  + preparaProvaFinale()
+}
+
+StudenteDecorator o-- Studente : "avvolge"
+StudenteDimostratore --> Evento : "traccia"
+
+@enduml

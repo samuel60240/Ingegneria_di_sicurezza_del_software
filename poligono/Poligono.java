@@ -1,4 +1,5 @@
 
-public Interface Poligono{
-	public getArea();
+public interface Poligono {
+    double getArea();
+    Poligono clone();
 }

@@ -1,13 +1,23 @@
-public class Triangolo implements Poligono{
-	private int base;
-	private int altezza;
+public class Triangolo implements Poligono {
+    private double base;
+    private double altezza;
 
-	public Triangolo(int base, int altezza){
-		this.base=base;
-		this.altezza=altezza;
-	}	
-	
-	public int getArea(){
-		return base*altezza/2;
-	}
+    public Triangolo() {
+        this(1, 1);
+    }
+
+    public Triangolo(double base, double altezza) {
+        this.base = base;
+        this.altezza = altezza;
+    }
+
+    @Override
+    public double getArea() {
+        return base * altezza / 2;
+    }
+
+    @Override
+    public Poligono clone() {
+        return new Triangolo(this.base, this.altezza);
+    }
 }

@@ -1,0 +1,20 @@
+@startuml
+interface FiguraPiana{
+ clone():Prototype
+ getArea():double
+ getPerimeter():double
+}
+
+class Quadrato() implements FiguraPiana {
+ lato:double
+}
+class Rettangolo() implements FiguraPiana{
+ base:double
+ altezza:double
+}
+allowmixing
+class Cliente{
+operation()
+}
+Cliente-->FiguraPiana
+@enduml

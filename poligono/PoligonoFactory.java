@@ -1,3 +1,3 @@
-public Interface PoligonoFactory{
-	public Poligono getShape(String);
+public interface PoligonoFactory {
+    Poligono getShape(String shapeType);
 }
